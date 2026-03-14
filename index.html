@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TASKR — Task Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --accent: #e8ff47;
+    --accent-dim: #b8cc35;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4757;
+    --success: #2ed573;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+    position: sticky;
+    top: 0;
+    background: rgba(14,14,14,0.95);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--display);
+    font-size: 36px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .logo span {
+    color: var(--muted);
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 3px;
+    display: block;
+    margin-top: -4px;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 32px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .stats-bar .val {
+    color: var(--text);
+    font-size: 18px;
+    font-family: var(--display);
+    letter-spacing: 2px;
+    display: block;
+  }
+
+  .stat-item { text-align: center; }
+
+  /* Status indicator */
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    display: inline-block;
+    margin-right: 6px;
+    transition: background 0.3s;
+    animation: pulse-red 2s infinite;
+  }
+  .status-dot.connected { background: var(--success); animation: pulse-green 2s infinite; }
+
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(255,71,87,0); }
+  }
+  @keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46,213,115,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(46,213,115,0); }
+  }
+
+  .status-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+  }
+
+  /* Layout */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 40px;
+  }
+
+  /* Add Task Form */
+  .add-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .add-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  input[type="text"], textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(232,255,71,0.08);
+  }
+
+  input[type="text"]::placeholder, textarea::placeholder {
+    color: var(--muted);
+  }
+
+  textarea {
+    height: 68px;
+    resize: vertical;
+  }
+
+  .btn-add {
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    font-family: var(--display);
+    font-size: 18px;
+    letter-spacing: 3px;
+    padding: 12px 32px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .btn-add:hover {
+    background: var(--accent-dim);
+    transform: translateY(-1px);
+  }
+
+  .btn-add:active { transform: translateY(0); }
+
+  /* Filter tabs */
+  .filter-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+
+  .filter-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-right: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  .filter-btn:last-child { border-right: none; }
+
+  .filter-btn.active {
+    background: var(--accent);
+    color: #0e0e0e;
+  }
+
+  .filter-btn:not(.active):hover { color: var(--text); }
+
+  /* Task list */
+  .task-list { display: flex; flex-direction: column; gap: 2px; }
+
+  .task-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    animation: slideIn 0.25s ease forwards;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .task-item:hover {
+    border-color: #3a3a3a;
+    background: #1a1a1a;
+  }
+
+  .task-item.completed {
+    opacity: 0.5;
+  }
+
+  .task-item.completed .task-title {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .task-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0;
+    width: 3px; height: 0;
+    background: var(--accent);
+    transition: height 0.2s;
+  }
+
+  .task-item:hover::before { height: 100%; }
+
+  /* Checkbox */
+  .check-btn {
+    width: 22px; height: 22px;
+    border: 2px solid var(--border);
+    background: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.15s;
+  }
+
+  .check-btn:hover { border-color: var(--accent); }
+
+  .check-btn.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .check-btn svg { display: none; }
+  .check-btn.checked svg { display: block; }
+
+  /* Task content */
+  .task-content { flex: 1; min-width: 0; }
+
+  .task-title {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+
+  .task-desc {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    word-break: break-word;
+    line-height: 1.6;
+  }
+
+  .task-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #444;
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* Task actions */
+  .task-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .task-item:hover .task-actions { opacity: 1; }
+
+  .btn-icon {
+    width: 32px; height: 32px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    font-size: 12px;
+  }
+
+  .btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+  .btn-icon.delete:hover { background: rgba(255,71,87,0.1); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 80px 0;
+    color: var(--muted);
+  }
+
+  .empty-state .big-text {
+    font-family: var(--display);
+    font-size: 72px;
+    letter-spacing: 8px;
+    opacity: 0.08;
+    display: block;
+    margin-bottom: 16px;
+  }
+
+  .empty-state p {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    bottom: 32px; right: 32px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 1000;
+  }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 14px 20px;
+    min-width: 260px;
+    animation: toastIn 0.25s ease;
+  }
+
+  .toast.error { border-left-color: var(--danger); }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Loading */
+  .loading {
+    text-align: center;
+    padding: 60px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 24px; height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Progress bar */
+  .progress-wrap {
+    margin-bottom: 32px;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .progress-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    header { padding: 0 20px; }
+    main { padding: 32px 20px; }
+    .stats-bar { gap: 16px; }
+    .form-row { flex-direction: column; }
+    .btn-add { width: 100%; text-align: center; padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    TASKR
+    <span>TASK MANAGER v1.0</span>
+  </div>
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="val" id="stat-total">0</span>
+      TOTAL
+    </div>
+    <div class="stat-item">
+      <span class="val" id="stat-pending">0</span>
+      PENDING
+    </div>
+    <div class="stat-item">
+      <span class="val" id="stat-done">0</span>
+      DONE
+    </div>
+  </div>
+  <div class="status-label">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">CONNECTING</span>
+  </div>
+</header>
+
+<main>
+  <div class="add-section">
+    <div class="section-label">// New Task</div>
+    <div class="form-row">
+      <input type="text" id="task-title" placeholder="Task title..." maxlength="120" />
+      <button class="btn-add" onclick="createTask()">ADD TASK</button>
+    </div>
+    <textarea id="task-desc" placeholder="Optional description..."></textarea>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap" style="display:none">
+    <div class="progress-label">
+      <span>COMPLETION</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all', this)">ALL</button>
+    <button class="filter-btn" onclick="setFilter('pending', this)">PENDING</button>
+    <button class="filter-btn" onclick="setFilter('done', this)">DONE</button>
+  </div>
+
+  <div class="task-list" id="task-list">
+    <div class="loading"><div class="spinner"></div>LOADING TASKS</div>
+  </div>
+
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  const API = 'http://localhost:8000/api';
+  let tasks = [];
+  let filter = 'all';
+
+async function apiFetch(path, opts = {}) {
+    try {
+      const res = await fetch(API + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Request failed');
+      }
+      if (res.status === 204 || res.headers.get('content-length') === '0') {
+        return null;
+      }
+      return res.json();
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  async function loadTasks() {
+    try {
+      tasks = await apiFetch('/tasks');
+      setConnected(true);
+      renderAll();
+    } catch (e) {
+      setConnected(false);
+      document.getElementById('task-list').innerHTML = `
+        <div class="empty-state">
+          <span class="big-text">ERR</span>
+          <p>Cannot reach backend — is Flask running on :5000?</p>
+        </div>`;
+    }
+  }
+
+  async function createTask() {
+    const title = document.getElementById('task-title').value.trim();
+    const desc  = document.getElementById('task-desc').value.trim();
+    if (!title) { toast('Title is required', true); return; }
+    try {
+      const task = await apiFetch('/tasks', {
+        method: 'POST',
+        body: JSON.stringify({ title, description: desc })
+      });
+      tasks.unshift(task);
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-desc').value = '';
+      renderAll();
+      toast('Task created');
+    } catch (e) { toast(e.message, true); }
+  }
+
+  async function toggleTask(id) {
+    const task = tasks.find(t => t.id == id);
+    if (!task) return;
+    try {
+      const updated = await apiFetch(`/tasks/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ completed: !task.completed })
+      });
+      Object.assign(task, updated);
+      renderAll();
+      toast(updated.completed ? 'Marked complete ✓' : 'Marked pending');
+    } catch (e) { toast(e.message, true); }
+  }
+
+  async function deleteTask(id) {
+    try {
+      await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
+      tasks = tasks.filter(t => t.id !=id);
+      renderAll();
+      toast('Task deleted');
+    } catch (e) { toast(e.message, true); }
+  }
+
+  function setFilter(f, btn) {
+    filter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderList();
+  }
+
+  function renderAll() {
+    updateStats();
+    renderList();
+  }
+
+  function updateStats() {
+    const total     = tasks.length;
+    const completed = tasks.filter(t => t.completed).length;
+    const pending   = total - completed;
+    document.getElementById('stat-total').textContent   = total;
+    document.getElementById('stat-pending').textContent = pending;
+    document.getElementById('stat-done').textContent    = completed;
+    const pctWrap = document.getElementById('progress-wrap');
+    if (total > 0) {
+      pctWrap.style.display = 'block';
+      const pct = Math.round((completed / total) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent  = pct + '%';
+    } else {
+      pctWrap.style.display = 'none';
+    }
+  }
+
+  function renderList() {
+    const visible = tasks.filter(t => {
+      if (filter === 'pending') return !t.completed;
+      if (filter === 'done')    return  t.completed;
+      return true;
+    });
+    const list = document.getElementById('task-list');
+    if (visible.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <span class="big-text">ZERO</span>
+          <p>${filter === 'all' ? 'No tasks yet — add one above' : `No ${filter} tasks`}</p>
+        </div>`;
+      return;
+    }
+    list.innerHTML = visible.map(t => `
+      <div class="task-item ${t.completed ? 'completed' : ''}">
+        <button class="check-btn ${t.completed ? 'checked' : ''}" onclick="toggleTask('${t.id}')">
+          <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+            <path d="M1 5L4.5 8.5L11 1" stroke="#0e0e0e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="task-content">
+          <div class="task-title">${escHtml(t.title)}</div>
+          ${t.description ? `<div class="task-desc">${escHtml(t.description)}</div>` : ''}
+          <div class="task-meta">${formatDate(t.created_at)}</div>
+        </div>
+        <div class="task-actions">
+          <button class="btn-icon delete" onclick="deleteTask('${t.id}')" title="Delete">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M1 1l10 10M11 1L1 11"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function formatDate(iso) {
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  }
+  function setConnected(ok) {
+    const dot   = document.getElementById('status-dot');
+    const label = document.getElementById('status-text');
+    dot.className   = 'status-dot' + (ok ? ' connected' : '');
+    label.textContent = ok ? 'CONNECTED' : 'OFFLINE';
+  }
+  function toast(msg, err = false) {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = 'toast' + (err ? ' error' : '');
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+  document.getElementById('task-title').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); createTask(); }
+  });
+  loadTasks();
+</script>
+</body>
+</html>
