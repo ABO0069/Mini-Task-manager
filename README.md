@@ -43,9 +43,7 @@ Backend runs at: `http://localhost:8000`
 
 Then open `index.html` in your browser.
 
-> **Note:** The frontend points to `localhost:5000` by default (Flask version).
-> Change the `API` constant at the top of the `<script>` in `index.html` to:
-> ```js
+
 > const API = 'http://localhost:8000/api';
 > ```
 
@@ -100,4 +98,4 @@ curl http://localhost:8000/api/tasks/stats
 
 ## Data persistence
 
-Unlike the Flask version (in-memory), this version uses **SQLite** via Django's ORM — tasks persist across server restarts.
+Uses **SQLite** via Django's ORM — tasks persist across server restarts.
